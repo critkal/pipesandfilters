@@ -23,8 +23,8 @@ package Components {
 	import Ports;
 	boundary component def ReaderCP {
 		ports:
-		^in : inUnreadIPT;
-		^out : outReadOPT;
+		userinfile : inUnreadIPT;
+		outread : outReadOPT;
 	}
 	component def newComponent {
 		configuration {
@@ -45,8 +45,8 @@ package Components {
 				using
 				ports:
 				usrin : inFilterIPT;
-				^in : inUnfilteredIPT;
-				^out : outFilteredOPT;
+				infilter : inUnfilteredIPT;
+				outfilter : outFilteredOPT;
 			}
 			OrderCP : OrderCP {
 				using
@@ -63,31 +63,31 @@ package Components {
 			}
 			connectors:
 			readingdone : ReadFile bindings read = p1;
-			separatingdone : SeparatedFile bindings p2 = in;
-			filteraplied : Filtered bindings out = np2;
 			orderdone : Ordered bindings np3 = p3;
+		separator : SeparatedFile bindings p2 = infilter;
+			newConnector : Filtered bindings outfilter = np2;
 		}
 	}
 	component def SeparatorCP {
 		ports:
-		^in : inUnseparatedIPT;
-		^out : outSeparatedOPT;
+		insep : inUnseparatedIPT;
+		outssep : outSeparatedOPT;
 	}
 	component def FilterCP {
 		ports:
-		usrin : inFilterIPT;
-		^in : inUnfilteredIPT;
-		^out : outFilteredOPT;
+		usrinfilter : inFilterIPT;
+		infilter : inUnfilteredIPT;
+		outfilter : outFilteredOPT;
 	}
 	component def OrderCP {
 		ports:
-		newPort : inOrderIPT;
-		newPort : inUnorderedIPT;
-		newPort : outOrderedOPT;
+		userinorder : inOrderIPT;
+		inorder : inUnorderedIPT;
+		outorder : outOrderedOPT;
 	}
 	boundary component def ShowCP {
 		ports:
-		^in : inUnshownIPT;
+		inshow : inUnshownIPT;
 		outusr : outShownOPT;
 	}
 }
@@ -97,10 +97,10 @@ package Ports {
 		flow in String
 	}
 	port def outReadOPT {
-		flow out WordsList
+		flow out String
 	}
 	port def inUnseparatedIPT {
-		flow in WordsList
+		flow in String
 	}
 	port def outSeparatedOPT {
 		flow out WordsList
@@ -137,7 +137,7 @@ package Connectors {
 		~Read : outReadOPT;
 		~Separate : inUnseparatedIPT;
 		flows:
-		WordsList from Read to Separate connector def newElement {
+		String from Read to Separate connector def newElement {
 		}
 		connector def newElement {
 		}
@@ -169,6 +169,60 @@ package Behavior {
 	import SysADL.types;
 	import Ports;
 	import Connectors;
+activity def SeparateAC ( insep : String ) : ( outsep : WordsList ) {
+		body {
+		actions : SeparateWordsAN : SeparateWordsAN {
+				using pins : insep : String;
+			}
+			delegate insep to insep
+			delegate outsep to SeparateWordsAN
+		}
+	}
+	action def SeparateWordsAN ( insep : String ) : WordsList {
+	constraint : post-condition SeparateCT
+	}
+	constraint SeparateCT ( insep : String ) : ( outsep : WordsList ) {
+	equation = "outsep.lenght() > 0"
+		}
+
+	
+	constraint FilterCT ( infilter : WordsList, usrinfilter : String ) : (
+	outfilter : WordsList ) {
+		equation = "outfilter.length() <= infilter.length()"
+	}
+activity def FilterAC ( infilter : WordsList, usrinfilter : String ) : (
+	outFilter : WordsList ) {
+		body {
+			actions : newAction : FilterAN {
+				using pins : usrinfilter : String;
+				infilter : WordsList;
+			}
+			delegate usrinfilter to usrinfilter
+			delegate infilter to infilter
+			delegate outFilter to newAction
+		}
+	}
+	action def FilterAN ( infilter : WordsList, usrinfilter : String ) :
+	WordsList {
+		constraint : post-condition FilterCT
+	}
+	activity def OrderAC ( inorder : WordsList, usrinorder : Order ) : ( outorder
+	: WordsList ) {
+		body {
+			actions : newAction : OrderAN {
+				using pins : usrinorder : Order;
+				inorder : WordsList;
+			}
+			delegate inorder to usrinorder
+			delegate usrinorder to inorder
+			delegate outorder to newAction
+		}
+	}
+	action def OrderAN ( inorder : WordsList, usrinorder : Order ) : WordsList {
+	}
+	constraint OrderCT ( inorder : WordsList, usrinorder : Order ) : ( outorder :
+	WordsList ) {
+	}
 }
 Requirement ReadFileFR ( 0 ) {
 	text = "The system should be able to read text files" satisfied by
