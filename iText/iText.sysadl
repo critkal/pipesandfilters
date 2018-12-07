@@ -1,0 +1,248 @@
+Model SysADLArchitecture;
+package SysADL.types {
+	value type Int {
+	}
+	value type Boolean {
+	}
+	value type String {
+	}
+	value type Void {
+	}
+	value type Real {
+	}
+enum Order {
+		Ascending, Descending
+	}
+	datatype WordsList {
+		attributes:
+		wordList : String;
+	}
+}
+package Components {
+	import Connectors;
+	import Ports;
+	boundary component def ReaderCP {
+		ports:
+		userinfile : inUnreadIPT;
+		outread : outReadOPT;
+	}
+	component def newComponent {
+		configuration {
+			components:
+			ReaderCP : ReaderCP {
+				using
+				ports:
+				unread : inUnreadIPT;
+				read : outReadOPT;
+			}
+			SeparatorCP : SeparatorCP {
+				using
+				ports:
+				p1 : inUnseparatedIPT;
+				p2 : outSeparatedOPT;
+			}
+			FilterCP : FilterCP {
+				using
+				ports:
+				usrin : inFilterIPT;
+				infilter : inUnfilteredIPT;
+				outfilter : outFilteredOPT;
+			}
+			OrderCP : OrderCP {
+				using
+				ports:
+				np1 : inOrderIPT;
+				np2 : inUnorderedIPT;
+				np3 : outOrderedOPT;
+			}
+			ShowCP : ShowCP {
+				using
+				ports:
+				p3 : inUnshownIPT;
+				outusr : outShownOPT;
+			}
+			connectors:
+			readingdone : ReadFile bindings read = p1;
+			orderdone : Ordered bindings np3 = p3;
+		separator : SeparatedFile bindings p2 = infilter;
+			newConnector : Filtered bindings outfilter = np2;
+		}
+	}
+	component def SeparatorCP {
+		ports:
+		insep : inUnseparatedIPT;
+		outssep : outSeparatedOPT;
+	}
+	component def FilterCP {
+		ports:
+		usrinfilter : inFilterIPT;
+		infilter : inUnfilteredIPT;
+		outfilter : outFilteredOPT;
+	}
+	component def OrderCP {
+		ports:
+		userinorder : inOrderIPT;
+		inorder : inUnorderedIPT;
+		outorder : outOrderedOPT;
+	}
+	boundary component def ShowCP {
+		ports:
+		inshow : inUnshownIPT;
+		outusr : outShownOPT;
+	}
+}
+package Ports {
+	import SysADL.types;
+	port def inUnreadIPT {
+		flow in String
+	}
+	port def outReadOPT {
+		flow out String
+	}
+	port def inUnseparatedIPT {
+		flow in String
+	}
+	port def outSeparatedOPT {
+		flow out WordsList
+	}
+	port def inUnfilteredIPT {
+		flow in WordsList
+	}
+	port def outFilteredOPT {
+		flow out WordsList
+	}
+	port def inUnorderedIPT {
+		flow in WordsList
+	}
+	port def outOrderedOPT {
+		flow out WordsList
+	}
+	port def inUnshownIPT {
+		flow in WordsList
+	}
+	port def outShownOPT {
+		flow out Boolean
+	}
+	port def inOrderIPT {
+		flow in Order
+	}
+	port def inFilterIPT {
+		flow in String
+	}
+}
+package Connectors {
+	import Ports;
+	connector def ReadFile {
+		participants:
+		~Read : outReadOPT;
+		~Separate : inUnseparatedIPT;
+		flows:
+		String from Read to Separate connector def newElement {
+		}
+		connector def newElement {
+		}
+	}
+	connector def SeparatedFile {
+		participants:
+		~Separated : outSeparatedOPT;
+		~Filter : inUnfilteredIPT;
+		flows:
+		WordsList from Separated to Filter
+	}
+	connector def Filtered {
+		participants:
+		~Filtered : outFilteredOPT;
+		~Order : inUnorderedIPT;
+		flows:
+		WordsList from Filtered to Order
+	}
+	connector def Ordered {
+		participants:
+		~Filtered : outFilteredOPT;
+		~Show : inUnshownIPT;
+		flows:
+		WordsList from Filtered to Show
+	}
+}
+package Behavior {
+	import Components;
+	import SysADL.types;
+	import Ports;
+	import Connectors;
+activity def SeparateAC ( insep : String ) : ( outsep : WordsList ) {
+		body {
+		actions : SeparateWordsAN : SeparateWordsAN {
+				using pins : insep : String;
+			}
+			delegate insep to insep
+			delegate outsep to SeparateWordsAN
+		}
+	}
+	action def SeparateWordsAN ( insep : String ) : WordsList {
+	constraint : post-condition SeparateCT
+	}
+	constraint SeparateCT ( insep : String ) : ( outsep : WordsList ) {
+	equation = "outsep.lenght() > 0"
+		}
+
+	
+	constraint FilterCT ( infilter : WordsList, usrinfilter : String ) : (
+	outfilter : WordsList ) {
+		equation = "outfilter.length() <= infilter.length()"
+	}
+activity def FilterAC ( infilter : WordsList, usrinfilter : String ) : (
+	outFilter : WordsList ) {
+		body {
+			actions : newAction : FilterAN {
+				using pins : usrinfilter : String;
+				infilter : WordsList;
+			}
+			delegate usrinfilter to usrinfilter
+			delegate infilter to infilter
+			delegate outFilter to newAction
+		}
+	}
+	action def FilterAN ( infilter : WordsList, usrinfilter : String ) :
+	WordsList {
+		constraint : post-condition FilterCT
+	}
+	activity def OrderAC ( inorder : WordsList, usrinorder : Order ) : ( outorder
+	: WordsList ) {
+		body {
+			actions : newAction : OrderAN {
+				using pins : usrinorder : Order;
+				inorder : WordsList;
+			}
+			delegate inorder to usrinorder
+			delegate usrinorder to inorder
+			delegate outorder to newAction
+		}
+	}
+	action def OrderAN ( inorder : WordsList, usrinorder : Order ) : WordsList {
+	}
+	constraint OrderCT ( inorder : WordsList, usrinorder : Order ) : ( outorder :
+	WordsList ) {
+	}
+}
+Requirement ReadFileFR ( 0 ) {
+	text = "The system should be able to read text files" satisfied by
+	Components.ReaderCP;
+}
+Requirement SeparateWordsFR ( 1 ) {
+	text = "The system must be able to separate the words from the text file"
+	satisfied by Components.SeparatorCP;
+}
+Requirement FilterWordsFR ( 2 ) {
+	text = "The software will filter the words according to the desired filter"
+	satisfied by Components.FilterCP;
+}
+Requirement OrderWordsFR ( 3 ) {
+	text =
+	"The software should be able to sort words in ascending or descending order"
+	satisfied by Components.OrderCP;
+}
+Requirement ShowWordsFR ( 4 ) {
+	text =
+	"The software should display at the end of the process, all words, properly filtered and sorted"
+	satisfied by Components.ShowCP;
+}
